@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# server
+# server program
 #
-# DESCRIPTION
+# Listens for and receives a message from the client. Returns a response to the client's instruction/inquiry.
 
 import socket
 import random
@@ -9,60 +9,84 @@ import random
 HOST = "127.0.0.1"  # Standard loopback interface address (localhost)
 PORT = 65432  # Port to listen on (non-privileged ports are > 1023)
 
-server_reply = b""
-server_reply_string = ""
-rand_num_decider = 0
-verb = ""
-noun_one = ""
-noun_two = ""
+def digital_palette(instruction):
+    '''
+    A function that can either 'blend' or 'choose,' given two primary colors, and includes error handling for 
+    invalid inouts.
 
-def digital_palette(param):
-    server_reply_string = ""
-    param_string = str(param)
-    #print(param_string)
-    #print(type(param_string), "sdfghjkjhgfdfghjmk,lkjhgtfdrrftghjmk")
-    param_string_list = param_string.split(",")
-    #print("PARAM LIST:" +  param_string_list, len(param_string_list))
-    verb = param_string_list[0]
-    noun_one = param_string_list[1]
-    noun_one = param_string_list[2]
+    :param param: (String): The string-version of the message sent by the
+         client and received by the server.
+    :return server_reply: (String) The server's reply, to be sent to the client.
+   
+    '''
+    primary_colors = ["red","yellow","blue"] # define a list of primary colors; these are the only possible valid inputs for nouns one and two
+    instruction_list = instruction.split(",") #parse the client's instructions based on a comma delimeter
+    print("instruction list:" ,  instruction_list, "length: ", len(instruction_list)) # verify in terminal client instruction
+    
+    if len(instruction_list) == 3: # first, set these values to assist with error handling -- but only if there are three arguments in
+                                    # the client's instruction
+        verb = instruction_list[0] # identify the verb of the instruction
+        noun_one = instruction_list[1] # identify the first color from the instruction
+        noun_two = instruction_list[2] # identify the second color from the instruction
 
-    if "blend" in param_string:
-        if "red" in param_string and "yellow" in param_string:
-            server_reply_string = "orange"
-        elif "yellow" in param_string and "blue" in param_string:
-            server_reply_string = "green"
-        elif "blue" in param_string and "red" in param_string:
-            server_reply_string = "violet"
-        else: server_reply_string = "Please only enter primary colors to blend. These are: red, yellow, and blue.\n"
-    elif "choose" in param_string:
-        rand_num_decider = random.random() *123456
-        print("rand_num_decider" + str(rand_num_decider))
-        if (rand_num_decider % 2) == 0:
-            server_reply_string = noun_one
-        else: server_reply_string = noun_two
-        print(server_reply_string)
+        # invalid verb
+        if (verb != "blend") and (verb != "choose"):
+            server_reply = "Invalid input: unrecognized operation. Verb is neither 'blend' nor 'choose.'"
+            return server_reply
+        # invalid nouns
+        if (noun_one not in primary_colors) or (noun_two not in primary_colors):
+            server_reply = "Invalid input: unrecognized colors. You did not enter both colors to be primary colors (red, yellow, or blue)."
+            return server_reply
+        # two colors are the same
+        if (noun_one == noun_two):
+            server_reply = "Invalid input: redundant colors. Please enter two different primary colors."
+            return server_reply
+            
+        # digital palette computations to generate server output
+        if verb == "blend":
+            if "red" in instruction and "yellow" in instruction:
+                server_reply = "orange"
+            elif "yellow" in instruction and "blue" in instruction:
+                server_reply = "green"
+            elif "blue" in instruction and "red" in instruction:
+                server_reply = "violet"
+            else: server_reply = "Please only enter primary colors to blend. These are: red, yellow, and blue. \n"
+        else: # choose, by process of elimination (sinse the verb is either blend or choose, and it is not blend)
+            rand_num_decider = random.randint(1,10) * random.randint(2,11)
+            # print("Random number decider:" , str(rand_num_decider))
+            if (rand_num_decider % 2) == 0:
+                server_reply = noun_one
+            else: server_reply = noun_two
+
+        return server_reply
+
+    # too few arguments, likely due to incorrect delimeter
+    elif len(instruction_list) < 3: 
+        server_reply = "Invalid input: too few arguments -- ensure use of comma delimeter. Please enter three arguments separated by commas (1 verb and two colors)."
+        return server_reply
+    # too many arguments
     else:
-        server_reply_string = "Please let me know if you want to 'blend' or 'choose', and let me know which two primary colors you have selected.\n"
+        server_reply = "Invalid input: too many arguments. Please enter three arguments separated by commas (1 verb and two colors)."
+        return server_reply
+    
 
-    #print("digital_palatte function. server reply is " + server_reply_string)
-    server_reply = bytes(server_reply_string, 'utf-8')
-
-
-print("Initiating connection to client - listening for connections at IP", HOST, "and port", PORT)
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind((HOST, PORT))
-    s.listen()
-    conn, addr = s.accept()
-    with conn:
+print("Initiating connection to client - listening for connections at IP", HOST, "and port", PORT, " \n")
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s: #creates socket object with address family AF_INET and socket type SOCK_STREAM
+    s.bind((HOST, PORT)) # associates the socket with the particular desired network interface and port number
+    s.listen() # enables the server to accept connections; also accounts for the server's backlogged connections (ones that haven't yet been accepted)
+    conn, addr = s.accept() # accept() blocks execution and waits for an incoming connection
+    with conn: # once a connection is made with the client, a new socket object is returned from accept() (different socket from the listening socket)
         print(f"Established connection, {addr}")
-        while True:
+        while True: # infinite while loop to loop over blocking colls to conn.recv()
             data = conn.recv(1024)
+            data_string = data.decode('utf-8')
+            # print(data_string)
             if not data:
-                break
-            print(f"Received client message: '{data!r}' [{len(data)} bytes]")
-            digital_palette(data)
-            print("Server Reply is:" + server_reply_string)
-            conn.send(server_reply)
-
+                break # if conn.recv() returns an empty bytes object, the server knows the client closed the connection
+            print(f"Received client message: '{data!r}' [{len(data)} bytes]") # print client message
+            reply = digital_palette(data_string) # set the server's reply equal to the output of the digital_palette function
+            print("Digital Palette program output:" , reply)
+            reply_byte = reply.encode('utf-8') # encode the digital_palette's reply to be type byte instead of a string
+            conn.sendall(reply_byte) # send server response to the client
+           
 print("Server job complete!\n")

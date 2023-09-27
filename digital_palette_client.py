@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # client
 #
-# DESCRIPTION
+# Prompts user for an instruction, sends instruction to the server
 
 import socket
 
@@ -20,7 +20,10 @@ def client_driver():
 
 def talk_to_server(sock):
     msg = input("Welcome to the Digital Palette!\n" +
-                "What primary colors would you like to blend, or from which two primary colors should I randomly choose?\nPlease enter your input in the following format (excluding the '<>' characters): <blend or choose>,<primary color 1>,<primary color 2>\n")
+                "What two different primary colors would you like to blend, or from which two primary colors should I randomly choose?\n" +
+                "Please enter your input in the following format (excluding the '<>' characters): " + 
+                "<blend or choose>,<primary color 1>,<primary color 2> \n"+
+                "Enter quit to exit this program.\n")
     if msg == 'quit':
         print("Client quitting per operator request\nExiting the Digital Palette")
         return False
